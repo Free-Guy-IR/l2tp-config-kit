@@ -1,0 +1,32 @@
+{
+  "name": "@pasarguard/l2tp-config-kit",
+  "version": "0.1.0",
+  "description": "Browser-safe TypeScript helpers for generating and validating PasarGuard L2TP/IPsec core configuration JSON.",
+  "type": "module",
+  "packageManager": "bun",
+  "license": "AGPL-3.0",
+  "author": "PasarGuard",
+  "repository": "https://github.com/Free-Guy-IR/l2tp-config-kit",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9",
+    "typescript": "^5.5.4"
+  }
+}
