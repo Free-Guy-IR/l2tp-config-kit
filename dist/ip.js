@@ -48,9 +48,12 @@ export function isIPv6(value) {
             return false;
         parts = [...(left === "" ? [] : left.split(":")), ...(right === "" ? [] : right.split(":"))];
     }
+    const embeddedIPv4Allowed = compression === -1 || address.slice(compression + 2) !== "";
     let hextets = parts.length;
     const last = parts[parts.length - 1];
     if (last !== undefined && last.includes(".")) {
+        if (!embeddedIPv4Allowed)
+            return false;
         if (parseIPv4(last) === undefined)
             return false;
         parts.pop();

@@ -15,7 +15,8 @@ import {
   POOL_MIN_PREFIX_LENGTH,
   PSK_MAX_LENGTH,
   PSK_MIN_LENGTH,
-  PSK_FORBIDDEN_CHARACTERS
+  PSK_FORBIDDEN_CHARACTERS,
+  stripWhitespace,
 } from "./validation.js";
 import type { CreateL2TPCoreConfigOptions, JsonValue, L2TPCoreConfig, L2TPValidationIssue } from "./types.js";
 
@@ -41,10 +42,12 @@ function issue(path: string, code: string, message: string): L2TPValidationIssue
   return { path, code, message };
 }
 
+const PYTHON_SPLIT_RE = /[\t\n\v\f\r \u001c-\u001f\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000,;]+/;
+
 export function splitLines(raw: string): string[] {
   return raw
-    .split(/[\s,;]+/)
-    .map(entry => entry.trim())
+    .split(PYTHON_SPLIT_RE)
+    .map(entry => stripWhitespace(entry))
     .filter(Boolean);
 }
 
@@ -95,7 +98,7 @@ function validateProposalsDraft(
 export function validateL2TPCoreDraft(draft: L2TPCoreDraft): L2TPValidationIssue[] {
   const issues: L2TPValidationIssue[] = [];
 
-  const inboundTag = draft.inboundTag.trim();
+  const inboundTag = stripWhitespace(draft.inboundTag);
   if (!inboundTag) {
     issues.push(issue("/inboundTag", "L2TP_FORM_TAG_REQUIRED", "Inbound tag is required."));
   } else if (!isValidInboundTag(inboundTag)) {
@@ -108,7 +111,7 @@ export function validateL2TPCoreDraft(draft: L2TPCoreDraft): L2TPValidationIssue
     );
   }
 
-  const serverAddr = draft.serverAddr.trim();
+  const serverAddr = stripWhitespace(draft.serverAddr);
   if (!serverAddr) {
     issues.push(issue("/serverAddr", "L2TP_FORM_SERVER_ADDR_REQUIRED", "Server address is required."));
   } else if (normalizeServerAddr(serverAddr) === undefined) {
@@ -136,7 +139,7 @@ export function validateL2TPCoreDraft(draft: L2TPCoreDraft): L2TPValidationIssue
     }
   }
 
-  const localIp = draft.localIp.trim();
+  const localIp = stripWhitespace(draft.localIp);
   if (localIp) {
     const normalized = normalizeIPv4(localIp);
     if (normalized === undefined) {
@@ -152,7 +155,7 @@ export function validateL2TPCoreDraft(draft: L2TPCoreDraft): L2TPValidationIssue
     }
   }
 
-  const egressInterface = draft.egressInterface.trim();
+  const egressInterface = stripWhitespace(draft.egressInterface);
   if (egressInterface && !isValidEgressInterface(egressInterface)) {
     issues.push(
       issue(
@@ -204,12 +207,12 @@ export function validateL2TPCoreDraft(draft: L2TPCoreDraft): L2TPValidationIssue
 
 function optionsFromDraft(draft: L2TPCoreDraft): CreateL2TPCoreConfigOptions {
   return {
-    inboundTag: draft.inboundTag.trim(),
-    serverAddr: draft.serverAddr.trim(),
+    inboundTag: stripWhitespace(draft.inboundTag),
+    serverAddr: stripWhitespace(draft.serverAddr),
     psk: draft.psk,
-    pool: draft.pool.trim(),
-    localIp: draft.localIp.trim(),
-    egressInterface: draft.egressInterface.trim(),
+    pool: stripWhitespace(draft.pool),
+    localIp: stripWhitespace(draft.localIp),
+    egressInterface: stripWhitespace(draft.egressInterface),
     dns: splitLines(draft.dns),
     ikeProposals: splitLines(draft.ikeProposals),
     espProposals: splitLines(draft.espProposals),

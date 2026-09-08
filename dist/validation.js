@@ -37,7 +37,7 @@ export function isValidInboundTag(value) {
     return TAG_RE.test(value);
 }
 export function normalizeServerAddr(value) {
-    const address = stripWhitespace(value).replace(/\.+$/, "");
+    const address = value.replace(/\.+$/, "");
     if (!address)
         return undefined;
     if (isIPAddress(address))
@@ -162,7 +162,15 @@ function normalizeDns(value, issues) {
 }
 function normalizeConfig(input) {
     const issues = [];
-    const output = { ...input };
+    const output = Object.create(null);
+    for (const key of Object.getOwnPropertyNames(input)) {
+        Object.defineProperty(output, key, {
+            value: input[key],
+            writable: true,
+            enumerable: true,
+            configurable: true,
+        });
+    }
     const inboundTag = requiredString("inbound_tag", input.inbound_tag, issues);
     if (inboundTag !== undefined) {
         if (!isValidInboundTag(inboundTag)) {
@@ -174,7 +182,7 @@ function normalizeConfig(input) {
     }
     const serverAddrRaw = requiredString("server_addr", input.server_addr, issues);
     if (serverAddrRaw !== undefined) {
-        const trimmed = serverAddrRaw.replace(/\.+$/, "");
+        const trimmed = stripWhitespace(serverAddrRaw).replace(/\.+$/, "");
         if (!trimmed) {
             issues.push(issue("/server_addr", L2TP_VALUE_ISSUE_CODE, "server_addr is required (the public IP or hostname clients connect to)"));
         }
@@ -286,7 +294,20 @@ export function validateL2TPCoreConfig(input) {
             issues: parsed.error.issues.map(zodIssue => issue(pathForZod(zodIssue.path.filter((part) => typeof part === "string" || typeof part === "number")), L2TP_SCHEMA_ISSUE_CODE, zodIssue.message))
         };
     }
-    const { config, issues } = normalizeConfig(parsed.data);
+    const carried = parsed.data;
+    if (input !== null && typeof input === "object") {
+        for (const key of Object.getOwnPropertyNames(input)) {
+            if (Object.getOwnPropertyDescriptor(carried, key) === undefined) {
+                Object.defineProperty(carried, key, {
+                    value: input[key],
+                    writable: true,
+                    enumerable: true,
+                    configurable: true,
+                });
+            }
+        }
+    }
+    const { config, issues } = normalizeConfig(carried);
     if (!config)
         return { ok: false, issues };
     return { ok: true, config, issues: [] };

@@ -1,15 +1,16 @@
 import { buildRawL2TPCoreConfig, createL2TPCoreConfig } from "./core.js";
-import { checkPool, DEFAULT_DNS, formatPool, inspectPsk, isValidEgressInterface, isValidInboundTag, isValidProposal, normalizeIPv4, normalizeProposal, normalizeServerAddr, poolContains, POOL_MAX_PREFIX_LENGTH, POOL_MIN_PREFIX_LENGTH, PSK_MAX_LENGTH, PSK_MIN_LENGTH, PSK_FORBIDDEN_CHARACTERS } from "./validation.js";
+import { checkPool, DEFAULT_DNS, formatPool, inspectPsk, isValidEgressInterface, isValidInboundTag, isValidProposal, normalizeIPv4, normalizeProposal, normalizeServerAddr, poolContains, POOL_MAX_PREFIX_LENGTH, POOL_MIN_PREFIX_LENGTH, PSK_MAX_LENGTH, PSK_MIN_LENGTH, PSK_FORBIDDEN_CHARACTERS, stripWhitespace, } from "./validation.js";
 export const DEFAULT_POOL = "10.10.10.0/24";
 export const GENERATED_PSK_LENGTH = 32;
 const PSK_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 function issue(path, code, message) {
     return { path, code, message };
 }
+const PYTHON_SPLIT_RE = /[\t\n\v\f\r \u001c-\u001f\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000,;]+/;
 export function splitLines(raw) {
     return raw
-        .split(/[\s,;]+/)
-        .map(entry => entry.trim())
+        .split(PYTHON_SPLIT_RE)
+        .map(entry => stripWhitespace(entry))
         .filter(Boolean);
 }
 export function joinLines(values) {
@@ -48,14 +49,14 @@ function validateProposalsDraft(raw, path, code, label, issues) {
 }
 export function validateL2TPCoreDraft(draft) {
     const issues = [];
-    const inboundTag = draft.inboundTag.trim();
+    const inboundTag = stripWhitespace(draft.inboundTag);
     if (!inboundTag) {
         issues.push(issue("/inboundTag", "L2TP_FORM_TAG_REQUIRED", "Inbound tag is required."));
     }
     else if (!isValidInboundTag(inboundTag)) {
         issues.push(issue("/inboundTag", "L2TP_FORM_TAG_INVALID", "Inbound tag must start with a letter or digit and may contain letters, digits, '_', '.' and '-' (max 64 characters)."));
     }
-    const serverAddr = draft.serverAddr.trim();
+    const serverAddr = stripWhitespace(draft.serverAddr);
     if (!serverAddr) {
         issues.push(issue("/serverAddr", "L2TP_FORM_SERVER_ADDR_REQUIRED", "Server address is required."));
     }
@@ -77,7 +78,7 @@ export function validateL2TPCoreDraft(draft) {
             issues.push(issue("/pool", "L2TP_FORM_POOL_INVALID", "Address pool must be an IPv4 CIDR such as 10.10.10.0/24."));
         }
     }
-    const localIp = draft.localIp.trim();
+    const localIp = stripWhitespace(draft.localIp);
     if (localIp) {
         const normalized = normalizeIPv4(localIp);
         if (normalized === undefined) {
@@ -87,7 +88,7 @@ export function validateL2TPCoreDraft(draft) {
             issues.push(issue("/localIp", "L2TP_FORM_LOCAL_IP_OUTSIDE_POOL", `Local IP must be inside the pool ${formatPool(pool.network)}.`));
         }
     }
-    const egressInterface = draft.egressInterface.trim();
+    const egressInterface = stripWhitespace(draft.egressInterface);
     if (egressInterface && !isValidEgressInterface(egressInterface)) {
         issues.push(issue("/egressInterface", "L2TP_FORM_EGRESS_INTERFACE_INVALID", "Egress interface must be a valid interface name (max 15 characters)."));
     }
@@ -117,12 +118,12 @@ export function validateL2TPCoreDraft(draft) {
 }
 function optionsFromDraft(draft) {
     return {
-        inboundTag: draft.inboundTag.trim(),
-        serverAddr: draft.serverAddr.trim(),
+        inboundTag: stripWhitespace(draft.inboundTag),
+        serverAddr: stripWhitespace(draft.serverAddr),
         psk: draft.psk,
-        pool: draft.pool.trim(),
-        localIp: draft.localIp.trim(),
-        egressInterface: draft.egressInterface.trim(),
+        pool: stripWhitespace(draft.pool),
+        localIp: stripWhitespace(draft.localIp),
+        egressInterface: stripWhitespace(draft.egressInterface),
         dns: splitLines(draft.dns),
         ikeProposals: splitLines(draft.ikeProposals),
         espProposals: splitLines(draft.espProposals),

@@ -63,7 +63,7 @@ export function isValidInboundTag(value: string): boolean {
 }
 
 export function normalizeServerAddr(value: string): string | undefined {
-  const address = stripWhitespace(value).replace(/\.+$/, "");
+  const address = value.replace(/\.+$/, "");
   if (!address) return undefined;
   if (isIPAddress(address)) return address;
   return HOSTNAME_RE.test(address) ? address : undefined;
@@ -211,7 +211,15 @@ function normalizeConfig(input: Record<string, JsonValue>): {
   readonly issues: L2TPValidationIssue[];
 } {
   const issues: L2TPValidationIssue[] = [];
-  const output: Record<string, JsonValue> = { ...input };
+  const output: Record<string, JsonValue> = Object.create(null) as Record<string, JsonValue>;
+  for (const key of Object.getOwnPropertyNames(input)) {
+    Object.defineProperty(output, key, {
+      value: (input as Record<string, JsonValue>)[key],
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
 
   const inboundTag = requiredString("inbound_tag", input.inbound_tag, issues);
   if (inboundTag !== undefined) {
@@ -230,7 +238,7 @@ function normalizeConfig(input: Record<string, JsonValue>): {
 
   const serverAddrRaw = requiredString("server_addr", input.server_addr, issues);
   if (serverAddrRaw !== undefined) {
-    const trimmed = serverAddrRaw.replace(/\.+$/, "");
+    const trimmed = stripWhitespace(serverAddrRaw).replace(/\.+$/, "");
     if (!trimmed) {
       issues.push(
         issue(
@@ -370,7 +378,21 @@ export function validateL2TPCoreConfig(input: unknown): L2TPValidationResult {
     };
   }
 
-  const { config, issues } = normalizeConfig(parsed.data);
+  const carried = parsed.data as Record<string, JsonValue>;
+  if (input !== null && typeof input === "object") {
+    for (const key of Object.getOwnPropertyNames(input)) {
+      if (Object.getOwnPropertyDescriptor(carried, key) === undefined) {
+        Object.defineProperty(carried, key, {
+          value: (input as Record<string, JsonValue>)[key],
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+      }
+    }
+  }
+
+  const { config, issues } = normalizeConfig(carried);
   if (!config) return { ok: false, issues };
   return { ok: true, config, issues: [] };
 }
